@@ -2,6 +2,7 @@ import numpy
 import ROOT
 from ROOT import *
 import argparse
+import math
 
 parser = argparse.ArgumentParser(description='Plot Ratio of Trigger Efficiency.')
 
@@ -26,11 +27,15 @@ def plot(canvas,name):
     canvas.Print(name+".pdf","pdf")
 #    canvas.Print(name+".png","png")
 #    canvas.Print(name+".eps","eps")
+#    canvas.Print(name+".root","root")
 
 def setStyle(hist,value):
     hist.SetLineColor(value)
     hist.SetMarkerColor(value)
-    hist.SetMarkerStyle(20)
+    if (value==kBlack): hist.SetMarkerStyle(20)
+    if (value==kRed): hist.SetMarkerStyle(21)
+    if (value==kBlue): hist.SetMarkerStyle(22)
+    if (value==kGreen+3): hist.SetMarkerStyle(23)
     hist.SetMarkerSize(0.8)
 
 gStyle.SetOptStat("")
@@ -63,7 +68,8 @@ for mass in ranges:
     masterAllNonBBMC.Add(allNonBBDimuonsMC)
     masterPassNonBBMC.Add(passNonBBDimuonsMC)
 
-    fileNameData="Hist-20170408Data_"+mass+".root"
+#    fileNameData="Hist-20170408Data_"+mass+".root"
+    fileNameData="Hist-20170416DataOscar_"+mass+".root"
     fData=ROOT.TFile(fileNameData)
     allBBData=ROOT.gDirectory.Get("DimuonMassBB")
     allNonBBData=ROOT.gDirectory.Get("DimuonMassNonBB")
@@ -145,12 +151,14 @@ effBBData.GetPaintedGraph().GetYaxis().SetTitleOffset(1.4)
 effBBData.GetPaintedGraph().GetYaxis().SetLabelSize(0.045)   #numbers 0.035 for just 1 pad
 effBBData.GetPaintedGraph().GetYaxis().SetTitleSize(0.05)   #text 0.04 for just 1 pad
 effBBData.GetPaintedGraph().GetXaxis().SetRangeUser(0.0,xmax)
-effBBData.GetPaintedGraph().GetYaxis().SetRangeUser(0.938,1.002)
+#effBBData.GetPaintedGraph().GetYaxis().SetRangeUser(0.958,1.002)
+effBBData.GetPaintedGraph().GetYaxis().SetRangeUser(0.978,1.002)
 effBBMC.Draw("same")
 
-legBB = ROOT.TLegend(0.40,0.25,0.87,0.45)
+legBB = ROOT.TLegend(0.40,0.05,0.85,0.2)
 legBB.AddEntry(effBBMC,"BB from MC","pl")
-legBB.AddEntry(effBBData,"BB from Data","pl")
+#legBB.AddEntry(effBBData,"BB from Data","pl")
+legBB.AddEntry(effBBData,"BB from Data (W')","pl")
 legBB.SetTextFont(42)
 legBB.SetTextSize(0.04)
 legBB.SetMargin(0.15)
@@ -168,12 +176,20 @@ padBottomBB.Draw()
 padBottomBB.cd()
 padBottomBB.SetGrid()
 
+
 ratioEffBB=ROOT.TH1D("ratioEffBB","ratioEffBB",nMassBin,massBins)
 effBB=ROOT.TH1D("effBB","effBB",nMassBin,massBins)
 for i in range(2,nMassBin+1):
     SF=effBBData.GetEfficiency(i)/effBBMC.GetEfficiency(i)
-    print "bin[",i,"]: Data: ",effBBData.GetEfficiency(i)," MC: ",effBBMC.GetEfficiency(i), " SF = ",SF
     ratioEffBB.SetBinContent(i,SF)
+    SigmaData=(effBBData.GetEfficiencyErrorUp(i)+effBBData.GetEfficiencyErrorLow(i))/2.0
+    SigmaMC=(effBBMC.GetEfficiencyErrorUp(i)+effBBMC.GetEfficiencyErrorLow(i))/2.0
+    RatioData=SigmaData/effBBData.GetEfficiency(i)
+    RatioMC=SigmaMC/effBBMC.GetEfficiency(i)
+    RatioError=SF*math.sqrt(RatioData*RatioData+RatioMC*RatioMC)
+    ratioEffBB.SetBinError(i,RatioError)
+    print "bin[",i,"]: Data: ",effBBData.GetEfficiency(i)," MC: ",effBBMC.GetEfficiency(i), " SF = ",SF," SigmaData: ",SigmaData," SigmaMC: ",SigmaMC," RatioError: ",RatioError
+
 
 ratioEffBB.SetTitle(";Generated Dimuon Mass (GeV); Data/MC")
 ratioEffBB.GetXaxis().SetRangeUser(0.0,xmax)
@@ -186,7 +202,8 @@ ratioEffBB.GetXaxis().SetTitleOffset(1.3)
 ratioEffBB.GetXaxis().SetTitleFont(42)
 ratioEffBB.GetYaxis().SetTitleSize(0.12)
 ratioEffBB.GetYaxis().SetLabelSize(0.1)
-ratioEffBB.GetYaxis().SetRangeUser(0.9955,1.0005);
+#ratioEffBB.GetYaxis().SetRangeUser(0.9955,1.0005); #Z'
+ratioEffBB.GetYaxis().SetRangeUser(0.9965,1.0025); #W'
 ratioEffBB.GetYaxis().SetNdivisions(509)
 ratioEffBB.GetYaxis().SetLabelFont(42)
 ratioEffBB.GetYaxis().SetTitleOffset(0.6)
@@ -199,7 +216,7 @@ ratioEffBB.GetYaxis().SetTitleFont(42)
 #
 #print "fcnBB: ",('%.3e' % fcnBB.GetParameter(0))," ",('%.3e' % fcnBB.GetParameter(1))
 
-setStyle(ratioEffBB,1)
+setStyle(ratioEffBB,kBlack)
 ratioEffBB.Draw("P")
 #ratioEff.Draw("PE")
 
@@ -224,12 +241,13 @@ effNonBBData.GetPaintedGraph().GetYaxis().SetTitleOffset(1.4)
 effNonBBData.GetPaintedGraph().GetYaxis().SetLabelSize(0.045)   #numbers 0.035 for just 1 pad
 effNonBBData.GetPaintedGraph().GetYaxis().SetTitleSize(0.05)   #text 0.04 for just 1 pad
 effNonBBData.GetPaintedGraph().GetXaxis().SetRangeUser(0.0,xmax)
-effNonBBData.GetPaintedGraph().GetYaxis().SetRangeUser(0.938,1.002)
+effNonBBData.GetPaintedGraph().GetYaxis().SetRangeUser(0.978,1.002)
 effNonBBMC.Draw("same")
 
-legNonBB = ROOT.TLegend(0.40,0.25,0.87,0.45)
+legNonBB = ROOT.TLegend(0.40,0.05,0.85,0.2)
 legNonBB.AddEntry(effNonBBMC,"NonBB from MC","pl")
-legNonBB.AddEntry(effNonBBData,"NonBB from Data","pl")
+#legNonBB.AddEntry(effNonBBData,"NonBB from Data","pl")
+legNonBB.AddEntry(effNonBBData,"NonBB from Data (W')","pl")
 legNonBB.SetTextFont(42)
 legNonBB.SetTextSize(0.04)
 legNonBB.SetMargin(0.15)
@@ -251,8 +269,15 @@ ratioEffNonBB=ROOT.TH1D("ratioEffNonBB","ratioEffNonBB",nMassBin,massBins)
 effNonBB=ROOT.TH1D("effNonBB","effNonBB",nMassBin,massBins)
 for i in range(2,nMassBin+1):
     SF=effNonBBData.GetEfficiency(i)/effNonBBMC.GetEfficiency(i)
-    print "bin[",i,"]: Data: ",effNonBBData.GetEfficiency(i)," MC: ",effNonBBMC.GetEfficiency(i), " SF = ",SF
+    SigmaData=(effNonBBData.GetEfficiencyErrorUp(i)+effNonBBData.GetEfficiencyErrorLow(i))/2.0
+    SigmaMC=(effNonBBMC.GetEfficiencyErrorUp(i)+effNonBBMC.GetEfficiencyErrorLow(i))/2.0
+    RatioData=SigmaData/effNonBBData.GetEfficiency(i)
+    RatioMC=SigmaMC/effNonBBMC.GetEfficiency(i)
+    RatioError=SF*math.sqrt(RatioData*RatioData+RatioMC*RatioMC)
+    print "bin[",i,"]: Data: ",effNonBBData.GetEfficiency(i)," MC: ",effNonBBMC.GetEfficiency(i), " SF = ",SF," SigmaData: ",SigmaData," SigmaMC: ",SigmaMC," RatioError: ",RatioError
     ratioEffNonBB.SetBinContent(i,SF)
+#    ratioEffNonBB.SetBinError(i, (1./effNonBBMC.GetEfficiency(i)) * TMath.Sqrt(effNonBBData.GetEfficiency(i) * (1 - effNonBBData.GetEfficiency(i)/effNonBBMC.GetEfficiency(i))) )
+    ratioEffNonBB.SetBinError(i,RatioError)
 
 ratioEffNonBB.SetTitle(";Generated Dimuon Mass (GeV); Data/MC")
 ratioEffNonBB.GetXaxis().SetRangeUser(0.0,xmax)
@@ -265,7 +290,8 @@ ratioEffNonBB.GetXaxis().SetTitleOffset(1.3)
 ratioEffNonBB.GetXaxis().SetTitleFont(42)
 ratioEffNonBB.GetYaxis().SetTitleSize(0.12)
 ratioEffNonBB.GetYaxis().SetLabelSize(0.1)
-ratioEffNonBB.GetYaxis().SetRangeUser(0.9915,0.9975);
+#ratioEffNonBB.GetYaxis().SetRangeUser(0.9915,0.9975); #Z'
+ratioEffNonBB.GetYaxis().SetRangeUser(0.9965,1.0035); #W'
 ratioEffNonBB.GetYaxis().SetNdivisions(509)
 ratioEffNonBB.GetYaxis().SetLabelFont(42)
 ratioEffNonBB.GetYaxis().SetTitleOffset(0.6)
@@ -275,12 +301,11 @@ ratioEffNonBB.GetYaxis().SetTitleFont(42)
 #fcnNonBB.SetParameters(0.998, -6.25e-08) #NonBB
 #fcnNonBB.SetLineColor(ROOT.kRed)
 #ratioEffNonBB.Fit(fcnNonBB, 'L')
-#
 #print "fcnNonBB: ",('%.3e' % fcnNonBB.GetParameter(0))," ",('%.3e' % fcnNonBB.GetParameter(1))
 
-setStyle(ratioEffNonBB,1)
+setStyle(ratioEffNonBB,kBlack)
 ratioEffNonBB.Draw("P")
-#ratioEff.Draw("PE")
+#ratioEffNonBB.Draw("PE")
 
 ExtraInfo="NonBB"
 plot(cNonBB,Title+ExtraInfo)
